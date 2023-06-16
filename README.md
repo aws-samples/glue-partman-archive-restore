@@ -22,7 +22,6 @@ using the AWS-S3 extension, and then drops the cold partition tables.
 The PostgreSQL RDS database runs in a private subnet. It stores its credentials in Secrets Managers and uses an S3 Endpoint to archive and restore files to S3 over the AWS Backbone.
 
 The AWS Glue ETL Jobs run in a private subnet. They use the S3 Endpoint to retrive python scripts, and Nat Gateway to download python modules. The Glue Jobs read the database credentials from 
-
 Secrets Manager. They establish a JDBC connection to PostgreSQL to execute SQL statements.
 
 Cloud9 desktop is created in the private subnet allowing the user access to set up test data in PostgreSQL 
@@ -57,7 +56,7 @@ cdk bootstrap aws://<account number>/<region>
 
 ### Clone this repo to a new folder
 ```
-git clone git@github.com:aws-samples/glue-partman-archive-restore.git
+git clone https://github.com/aws-samples/glue-partman-archive-restore.git
 
 cd glue-partman-archive-restore
 ```
