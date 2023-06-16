@@ -31,10 +31,10 @@ workflow_run_id = args['WORKFLOW_RUN_ID']
 workflow_params = glue_client.get_workflow_run_properties(Name=workflow_name, RunId=workflow_run_id)["RunProperties"]
 connection = workflow_params['connection']
 bucket_name = workflow_params['bucket_name']
-table_filter = workflow_params['table_filter']
+parent_table = workflow_params['parent_table']
 schema = workflow_params['schema']
 
-print ("connection :", connection, "table_filter :", table_filter, "schema :", schema, "bucket_name :", bucket_name)
+print ("connection :", connection, "parent_table :", parent_table, "schema :", schema, "bucket_name :", bucket_name)
 #
 # Get the JDBC Configuration from the connection and parse out the 
 # host, port, database name, dbusername and password
@@ -61,7 +61,7 @@ print ("Got connection and cursor")
 #
 # Pick up the cold partitions
 #
-sql = "select relname, n.nspname from pg_class join pg_namespace n on n.oid = relnamespace where relkind = 'r' and relispartition ='f' and relname like '"+table_filter+"' and n.nspname = '"+schema+"';"
+sql = "select relname, n.nspname from pg_class join pg_namespace n on n.oid = relnamespace where relkind = 'r' and relispartition ='f' and relname like '"+parent_table+"_p%' and n.nspname = '"+schema+"';"
 cursor.execute(sql)
 result = cursor.fetchall();
 
@@ -78,7 +78,7 @@ for row in result:
     # Archive the table to S3 
     #
     table_name = nspname+"."+relname
-    bucket_path = database+"/"+nspname+"/"+relname+"/data"
+    bucket_path = database+"/"+nspname+"/"+parent_table+"/"+relname+"/data"
     print ("Archiving table "+table_name+" to bucket "+bucket_name+"/"+bucket_path)
     
     sql = "SELECT * FROM aws_s3.query_export_to_s3('SELECT * FROM "+table_name+"',aws_commons.create_s3_uri('"+bucket_name+"','"+bucket_path+"'));"

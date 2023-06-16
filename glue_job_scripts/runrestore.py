@@ -32,9 +32,10 @@ connection = workflow_params['connection']
 bucket_name = workflow_params['bucket_name']
 restore_date = workflow_params['restore_date']
 parent_table = workflow_params['parent_table']
+schema = workflow_params['schema']
 region = workflow_params['region']
 
-print ("connection :",connection, "bucket_name :", bucket_name, "restore_date :", restore_date, "parent_table :", parent_table)
+print ("connection :",connection, "bucket_name :", bucket_name, "restore_date :", restore_date, "schema :", schema, "parent_table :", parent_table)
 #
 # Get the JDBC Configuration from the connection and parse out the 
 # host, port, database name, dbusername and password
@@ -63,14 +64,14 @@ print ("Got connection and cursor")
 #
 # Re-create the partition table using partman for the given restore date
 #
-sql = "SELECT partman.create_partition_time( p_parent_table => '"+parent_table+"', p_partition_times => ARRAY['"+restore_date+"']::timestamptz[]);"
+sql = "SELECT partman.create_partition_time( p_parent_table => '"+schema+"."+parent_table+"', p_partition_times => ARRAY['"+restore_date+"']::timestamptz[]);"
 cursor.execute(sql)
 result = cursor.fetchall();
 print ("Result :", result)      # true a partiton table was created, false it was not created (because it was already there)
 #
 # For the given date, discover the schema and name of partition table. We will need this to reference the backup in S3
 #
-sql = "SELECT partman.show_partition_name (p_parent_table => '"+parent_table+"', p_value => '"+restore_date+"');"
+sql = "SELECT partman.show_partition_name (p_parent_table => '"+schema+"."+parent_table+"', p_value => '"+restore_date+"');"
 print("Show partition name sql: ", sql)
 cursor.execute(sql)
 print ("Executed")
@@ -88,9 +89,9 @@ print ("table :", table)
 # Write the archive data from S3 to the parent table. This will go to the partition we just recreated
 # The path to the backup was determined by the schema and partition table name
 #
-bucket_path = database+"/"+schema+"/"+table+"/data"
+bucket_path = database+"/"+schema+"/"+parent_table+"/"+table+"/data"
 print ("Bucket path :", bucket_path)
-sql = "SELECT * FROM aws_s3.table_import_from_s3('"+parent_table+"', '',  '(format text)', aws_commons.create_s3_uri( '"+bucket_name+"', '"+bucket_path+"', '"+region+"'))"
+sql = "SELECT * FROM aws_s3.table_import_from_s3('"+schema+"."+parent_table+"', '',  '(format text)', aws_commons.create_s3_uri( '"+bucket_name+"', '"+bucket_path+"', '"+region+"'))"
     
 print("Restore sql: ", sql)
 cursor.execute(sql)

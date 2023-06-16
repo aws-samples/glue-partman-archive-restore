@@ -1,2 +1,15 @@
-aws-cdk-lib==2.75.1
-constructs>=10.0.0,<11.0.0
+attrs==23.1.0
+aws-cdk-lib==2.84.0
+aws-cdk.asset-awscli-v1==2.2.192
+aws-cdk.asset-kubectl-v20==2.1.2
+aws-cdk.asset-node-proxy-agent-v5==2.0.165
+cattrs==23.1.2
+cdk-nag==2.27.39
+constructs==10.2.52
+importlib-resources==5.12.0
+jsii==1.84.0
+publication==0.0.3
+python-dateutil==2.8.2
+six==1.16.0
+typeguard==2.13.3
+typing_extensions==4.6.3

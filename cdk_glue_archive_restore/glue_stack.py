@@ -5,15 +5,16 @@ from aws_cdk import (
     # Duration,
     Stack,
     # aws_sqs as sqs,
+    Aspects,
 )
-import aws_cdk as cdk
+
 import aws_cdk.aws_s3_deployment as s3deploy
 import aws_cdk.aws_ec2 as ec2
-import aws_cdk.aws_rds as rds
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_glue as glue
 from constructs import Construct
-
+import cdk_nag
+from cdk_nag import NagSuppressions
 from cdk_glue_archive_restore.vpc_stack import VpcStack
 from cdk_glue_archive_restore.db_stack import DbStack
 
@@ -39,7 +40,24 @@ class GlueStack(Stack):
                         destination_key_prefix = "scripts/",
         )
 
-
+        NagSuppressions.add_resource_suppressions_by_path(self,
+                '/gluestack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/DefaultPolicy/Resource',[
+                    {"id": 'AwsSolutions-IAM4', "reason": 'Uses default settings for deploying scripts to S3', },
+                    {"id": 'AwsSolutions-IAM5', "applies_to": '[Action::s3:GetBucket*]', "reason": 'Uses default settings for deploying scripts to S3', },
+                    {"id": 'AwsSolutions-L1', "reason": 'Uses default settings for deploying scripts to S3', },
+            ]
+        )
+        NagSuppressions.add_resource_suppressions_by_path(self,
+                '/gluestack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/Resource',[
+                {"id": 'AwsSolutions-IAM4', "reason": 'Uses default settings for deploying scripts to S3', },
+           ]
+        )
+        NagSuppressions.add_resource_suppressions_by_path(self,
+                '/gluestack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/Resource',[
+                {"id": 'AwsSolutions-L1', "reason": 'Uses default settings for deploying scripts to S3', },
+            ]
+        )
+        Aspects.of(self).add(cdk_nag.AwsSolutionsChecks())
         #
         # Create a security group to allow Glue to reach all resources on the subnet
         #
@@ -52,6 +70,11 @@ class GlueStack(Stack):
             peer = ec2.Peer.any_ipv4(),
             connection = ec2.Port.all_tcp(),
         )
+
+        NagSuppressions.add_resource_suppressions(glue_security_group, [
+                {"id": 'AwsSolutions-EC23', "reason": 'Glue requires ingress for all IP and Ports or it exits with an error', },
+             ]
+        )
         #
         # Create a Role that Glue will use to access Postgres, SecretManager and S3
         # These are managed policies, except the CRCEZ
@@ -60,8 +83,8 @@ class GlueStack(Stack):
             assumed_by = iam.ServicePrincipal("glue.amazonaws.com"),
             description = "Allow Glue to access S3 SecretsManager and RDS",
         )
-        glue_role.attach_inline_policy(
-            iam.Policy(self, "Glue S3 EZ CRC Policy",
+
+        inline_policy = iam.Policy(self, "Glue S3 EZ CRC Policy",
                 statements = [
                     iam.PolicyStatement(
                         effect = iam.Effect.ALLOW,
@@ -78,10 +101,76 @@ class GlueStack(Stack):
                         actions = ["s3:GetObject", "s3:PutObject"],
                         resources = ["arn:aws:s3:::"+vpc_stack.bucket_name+"/*"],
                     ),
+                    iam.PolicyStatement(
+                        effect = iam.Effect.ALLOW,
+                        actions = [                "glue:*",
+                                                   "s3:GetBucketLocation",
+                                                   "s3:ListBucket",
+                                                   "s3:ListAllMyBuckets",
+                                                   "s3:GetBucketAcl",
+                                                   "ec2:DescribeVpcEndpoints",
+                                                   "ec2:DescribeRouteTables",
+                                                   "ec2:CreateNetworkInterface",
+                                                   "ec2:DeleteNetworkInterface",
+                                                   "ec2:DescribeNetworkInterfaces",
+                                                   "ec2:DescribeSecurityGroups",
+                                                   "ec2:DescribeSubnets",
+                                                   "ec2:DescribeVpcAttribute",
+                                                   "iam:ListRolePolicies",
+                                                   "iam:GetRole",
+                                                   "iam:GetRolePolicy",
+                                                   "cloudwatch:PutMetricData",     ],
+                        resources = ["*"],
+                    ),
+                    iam.PolicyStatement(
+                        effect = iam.Effect.ALLOW,
+                        actions = [                "s3:CreateBucket",
+                                                   "s3:PutBucketPublicAccessBlock",],
+                        resources = ["arn:aws:s3:::aws-glue-*"],
+                    ),
+                    iam.PolicyStatement(
+                        effect = iam.Effect.ALLOW,
+                        actions = [                "s3:GetObject",
+                                                   "s3:PutObject",
+                                                   "s3:DeleteObject"	],
+                        resources = [                "arn:aws:s3:::aws-glue-*/*",
+                                                     "arn:aws:s3:::*/*aws-glue-*/*"],
+                    ),
+                    iam.PolicyStatement(
+                        effect = iam.Effect.ALLOW,
+                        actions = [                 "s3:GetObject"],
+                        resources = [                "arn:aws:s3:::crawler-public*",
+                                                     "arn:aws:s3:::aws-glue-*"],
+                    ),
+                    iam.PolicyStatement(
+                        effect = iam.Effect.ALLOW,
+                        actions = [                "logs:CreateLogGroup",
+                                                   "logs:CreateLogStream",
+                                                   "logs:PutLogEvents",
+                                                   "logs:AssociateKmsKey", ],
+                        resources = [              "arn:aws:logs:*:*:log-group:/aws-glue/*",],
+                    ),
+                    iam.PolicyStatement(
+                        effect = iam.Effect.ALLOW,
+                        actions = [                "ec2:CreateTags",
+                                                   "ec2:DeleteTags" ],
+                        conditions={"ForAllValues:StringEquals":
+                                        {"aws:TagKeys": ["aws-glue-service-resource"]}},
+                        resources = [                "arn:aws:ec2:*:*:network-interface/*",
+                                                     "arn:aws:ec2:*:*:security-group/*",
+                                                     "arn:aws:ec2:*:*:instance/*"],
+                    ),
+
                 ],
-            ),
         )
-        glue_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSGlueServiceRole"))
+        glue_role.attach_inline_policy(inline_policy)
+
+
+        NagSuppressions.add_resource_suppressions(inline_policy, [
+            {"id": 'AwsSolutions-IAM5', "reason": 'Glue requires access to all folders in bucket to store archives', },
+            ]
+        )
+
         #
         # Create an AWS Glue connection to the postgres database
         #
@@ -191,7 +280,7 @@ class GlueStack(Stack):
                 "connection" : connection_name,
                 "schema" : "dms_sample",
                 "bucket_name" : vpc_stack.bucket_name,
-                "table_filter" : "ticket_purchase_hist_p%",
+                "parent_table" : "ticket_purchase_hist",
                 "region" : self.region,
             },
             description = "Maintain and archive cold partitionz",
@@ -248,7 +337,8 @@ class GlueStack(Stack):
                 "connection" : connection_name,
                 "restore_date" : "2020_01_01",
                 "bucket_name" : vpc_stack.bucket_name,
-                "parent_table" : "dms_sample.ticket_purchase_hist",
+                "schema" : "dms_sample",
+                "parent_table" : "ticket_purchase_hist",
                 "region" : self.region,
             },
             description = "Restore the partition table from S3 archive",
@@ -271,6 +361,19 @@ class GlueStack(Stack):
         )
         create_table_trigger.add_dependency(restore_workflow)
 
-
-
+        NagSuppressions.add_resource_suppressions(archive_job, [
+            {"id": 'AwsSolutions-GL1', "reason": 'Cloudwatch encryption is not enabled in this demo', },
+            {"id": 'AwsSolutions-GL3', "reason": 'Bookmarks are disabled in this ETL job', },
+            ]
+        )
+        NagSuppressions.add_resource_suppressions(restore_job, [
+            {"id": 'AwsSolutions-GL1', "reason": 'Cloudwatch encryption is not enabled in this demo', },
+            {"id": 'AwsSolutions-GL3', "reason": 'Bookmarks are disabled in this ETL job', },
+            ]
+        )
+        NagSuppressions.add_resource_suppressions(partman_job, [
+            {"id": 'AwsSolutions-GL1', "reason": 'Cloudwatch encryption is not enabled in this demo', },
+            {"id": 'AwsSolutions-GL3', "reason": 'Bookmarks are disabled in this ETL job', },
+            ]
+        )
 

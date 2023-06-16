@@ -6,7 +6,7 @@ using pg_partman and Amazon S3" AWS Database Blog, by Li Liu, Samujjwal Roy, and
 
    https://aws.amazon.com/blogs/database/archive-and-purge-data-for-amazon-rds-for-postgresql-and-amazon-aurora-with-postgresql-compatibility-using-pg_partman-and-amazon-s3/
 
-The CDK creates the cloud infrastructure, including the VPC, S3 bucket, PostgreSQL database, Glue Jobs and Glue Workflow into your AWS Account.  
+The CDK creates the cloud infrastructure, including the VPC, S3 bucket, PostgreSQL database, Glue Jobs and Glue Workflow into your AWS Account. 
 
 Like the original blog, the solution depends on a sample data set that demonstrates a table of customer ticket purchases partitioned by month using the partman extension. This README includes the steps to
 set up the test data that the automated solution depends on. 
@@ -15,6 +15,32 @@ Two automated Glue Workflows are provided in this distribution:
 - Maintain and Archive Workflow - runs partman.run_maintenance to create new partitions and mark old partitions as cold. The second job in the workflow automatically archives any cold partion tables to S3
 using the AWS-S3 extension, and then drops the cold partition tables.
 - Restore Workflow - taking a month as a parameter, re-creates the partition table by using partman, and then uses AWS-S3 to restore the data from the S3 archive.
+
+## Archiecture Diagram
+![architecture](./images/architecture.png)	
+
+The PostgreSQL RDS database runs in a private subnet. It stores its credentials in Secrets Managers and uses an S3 Endpoint to archive and restore files to S3 over the AWS Backbone.
+
+The AWS Glue ETL Jobs run in a private subnet. They use the S3 Endpoint to retrive python scripts, and Nat Gateway to download python modules. The Glue Jobs read the database credentials from 
+
+Secrets Manager. They establish a JDBC connection to PostgreSQL to execute SQL statements.
+
+Cloud9 desktop is created in the private subnet allowing the user access to set up test data in PostgreSQL 
+
+## Amazon Cloud Development Kit (CDK)
+
+This repo includes CDK scripts written in Python that automatically provision the infrastructure environment on the AWS Cloud. 
+
+The CDK is organized as 3 stacks, to allow the resources in each stack to complete deployment before commencing deployment of the next stack. The solution provides an example of pass 
+parameters by creating attributes that the next stack can read (see app.py module).
+
+The stacks create the following - 
+- VPC network enviroment necessary for running an AWS Glue ETL in a private subnet. This includes S3 Endpoint to reach the S3 bucket and a NAT Gateway to download modules from the Internet. 
+- PostgreSQL database with permissions to import and export from S3 using the AWS_S3 extension
+- AWS Glue ETL jobs, Connection and Workflow, Security Group, parameters and the IAM permissions needed to create and run the jobs.
+
+The user is free to use these samples to extend their own solution and database, using the samples to configure their VPC and create Glue Jobs and Workflow. 
+ 
 
 ## Deploy the application
 
@@ -35,6 +61,12 @@ git clone git@ssh.gitlab.aws.dev:ndpotter/glue-partman-archive-restore.git
 
 cd glue-partman-archive-restore
 ```
+### Create a virtual environment and install the project dependencies (adjust path for mac and linux)
+```
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt -t.
+```
 ### Deploy the CDK stacks to your AWS account
 
 - Authenticate to your AWS account
@@ -42,22 +74,22 @@ cd glue-partman-archive-restore
 cdk deploy * --require-approval=never
 ```
 This will deploy 3 stacks in succession:
-- vpcstack - creates
--- S3 bucket - to store the glue python scripts and the database archives
--- VPC with a S3 endpoint Gateway to allow Glue and Postgres to commuicate with S3 
--- Private subnets for the RDS Postgres Database, Glue Jobs and Cloud9
--- Public subnets for the NAT Gateway to allow glue jobs to download python modules from the Internet
--- NAT gateway - to allow the Python in the Glue jobs to download modules from the Internet
+vpcstack - creates
+- S3 bucket - to store the glue python scripts and the database archives
+- VPC with a S3 endpoint Gateway to allow Glue and Postgres to commuicate with S3 
+- Private subnets for the RDS Postgres Database, Glue Jobs and Cloud9
+- Public subnets for the NAT Gateway to allow glue jobs to download python modules from the Internet
+- NAT gateway - to allow the Python in the Glue jobs to download modules from the Internet
 			
-- dbstack 
--- RDS Postgres database
--- Secrets Manager - PostgreSQL username and password in a secret
--- Bucket policies - IAM policy and roles to allow import and export from Postgres to S3
+dbstack 
+- RDS Postgres database
+- Secrets Manager - PostgreSQL username and password in a secret
+- Bucket policies - IAM policy and roles to allow import and export from Postgres to S3
 
-- gluestack
--- Connector - to connect to the Postgres database
--- Glue jobs - running python scripts
--- Workflow - triggers and jobs to Maintain, Archive and Restore the partition tables
+gluestack
+- Connector - to connect to the Postgres database
+- Glue jobs - running python scripts
+- Workflow - triggers and jobs to Maintain, Archive and Restore the partition tables
 		
 These stacks can be deployed and destroyed progressively (should the AWS authentication be too short for deploying all 3 stacks)	
 ```	
@@ -232,7 +264,7 @@ The Maintain and Archive Glue Workflow runs two jobs:
 - Select Advanced Properties to review the input parameters to the workflow. 
 ```
 connection - is the name of the Connection that was configured by the SDK to point to the postgres database and the subnet where the glue jobs will run
-schema, table_filter - are used by the job to run partman against the partitioned table that was configured in above
+schema, parent_table - are used by the job to select cold partitioned tables to archive
 bucket_name - is the name of the bucket that will hold the archives
 region - is used by the aws-s3 extension to copy the archive from postgres
 ```
