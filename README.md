@@ -57,7 +57,7 @@ cdk bootstrap aws://<account number>/<region>
 
 ### Clone this repo to a new folder
 ```
-git clone git@ssh.gitlab.aws.dev:ndpotter/glue-partman-archive-restore.git
+git clone git@github.com:aws-samples/glue-partman-archive-restore.git
 
 cd glue-partman-archive-restore
 ```
