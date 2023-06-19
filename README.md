@@ -252,8 +252,9 @@ SELECT count(*) from dms_sample.ticket_purchase_hist_p2020_01;
 The Maintain and Archive Glue Workflow runs two jobs:
  - runpartman - this job logs into the PostgreSQL database using the Glue connection. It runs the partman utility which automatically 
  creates new partition tables, and marks partition tables that exceed the retention period (12 months) as 'Cold'
- - archive - this job logs into the PostgreSQL database using the Glue connection. It uses partman to list the Cold tables. For each Cold partition table found, the job runs the aws_s3 extension to archive
- partition table to S3, creating a path for the archive from the database name, schema, table and month.  Finally, the job drops the Cold partition table.
+ - archive - this job logs into the PostgreSQL database using the Glue connection. It performs a select to list the "Cold" partition tables - tables matching the partitioned tables name 
+that are not partitions. For each Cold table found, the job runs the aws_s3 extension to archive the table to S3, creating a path for the archive from the database name, schema, table 
+and month. Finally, the job drops the Cold table.
 
 
 ###	Log into the AWS Console and search for and select AWS Glue
@@ -263,7 +264,7 @@ The Maintain and Archive Glue Workflow runs two jobs:
 - Select Advanced Properties to review the input parameters to the workflow. 
 ```
 connection - is the name of the Connection that was configured by the SDK to point to the postgres database and the subnet where the glue jobs will run
-schema, parent_table - are used by the job to select cold partitioned tables to archive
+schema, parent_table - are used by the job to select Cold tables to archive
 bucket_name - is the name of the bucket that will hold the archives
 region - is used by the aws-s3 extension to copy the archive from postgres
 ```
@@ -289,7 +290,7 @@ region - is used by the aws-s3 extension to copy the archive from postgres
 	
 - Select the postgres folder, and navigate to the partition file name chosen for the cold test data - note the data archive created
 
-- From the buxket root, select the scripts folder - these are the python scripts run by the Glue jobs
+- From the bucket root, select the scripts folder - these are the python scripts run by the Glue jobs
 		
 ### Review the database tables using Cloud9
 	
