@@ -189,6 +189,26 @@ class GlueStack(Stack):
                 },
                 physical_connection_requirements = glue.CfnConnection.PhysicalConnectionRequirementsProperty(
                     security_group_id_list = [db_stack.db_security_group.security_group_id, glue_security_group.security_group_id],
+                    subnet_id = vpc_stack.private_subnets.subnets[0].subnet_id,
+                    availability_zone = vpc_stack.private_subnets.subnets[0].availability_zone,
+                )
+            )
+        )
+        connection_name_b = "Database Ab"
+        glue_connection_b = glue.CfnConnection(self, connection_name_b,
+            catalog_id = self.account,
+            connection_input = glue.CfnConnection.ConnectionInputProperty(
+                name = connection_name_b,
+                description = "Connector to postgres database",
+                connection_type = "JDBC",
+                connection_properties = {
+                    "JDBC_CONNECTION_URL" : jdbc_url,
+                    "SECRET_ID" : db_secret.secret_name,
+                    "JDBC_ENFORCE_SSL" : False,
+                    "KAFKA_SSL_ENABLED" : False,
+                },
+                physical_connection_requirements = glue.CfnConnection.PhysicalConnectionRequirementsProperty(
+                    security_group_id_list = [db_stack.db_security_group.security_group_id, glue_security_group.security_group_id],
                     subnet_id = vpc_stack.private_subnets.subnets[1].subnet_id,
                     availability_zone = vpc_stack.private_subnets.subnets[1].availability_zone,
                 )
@@ -205,7 +225,7 @@ class GlueStack(Stack):
             ),
             role = glue_role.role_name,
             connections = glue.CfnJob.ConnectionsListProperty(
-                connections = [connection_name],
+                connections = [connection_name, connection_name_b],
             ),
             description = "Archive cold partition table to S3",
             execution_property = glue.CfnJob.ExecutionPropertyProperty(
@@ -230,7 +250,7 @@ class GlueStack(Stack):
             ),
             role = glue_role.role_name,
             connections = glue.CfnJob.ConnectionsListProperty(
-                connections = [connection_name],
+                connections = [connection_name, connection_name_b],
             ),
             description = "Restore partition table from S3",
             execution_property = glue.CfnJob.ExecutionPropertyProperty(
@@ -255,7 +275,7 @@ class GlueStack(Stack):
             ),
             role = glue_role.role_name,
             connections = glue.CfnJob.ConnectionsListProperty(
-                connections = [connection_name],
+                connections = [connection_name, connection_name_b],
             ),
             description = "Partman run.maintenance",
             execution_property = glue.CfnJob.ExecutionPropertyProperty(

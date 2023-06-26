@@ -88,10 +88,10 @@ class DbStack(Stack):
             s3_import_role = s3_import_role,
             s3_export_role = s3_export_role,
             storage_encrypted = True,
+            multi_az = True,
         )
         self.glueDB.add_rotation_single_user()
         NagSuppressions.add_resource_suppressions(self.glueDB, [
-                {"id": 'AwsSolutions-RDS3', "reason": 'DB is single instance to reduce costs', },
                 {"id": 'AwsSolutions-RDS10', "reason": 'Deletion protection deliberately disabled - so that DB deletes when demo is over', },
                 {"id": 'AwsSolutions-RDS11', "reason": 'DB uses the default port for this demo', },
             ]

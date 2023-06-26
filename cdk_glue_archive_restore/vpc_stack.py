@@ -55,7 +55,7 @@ class VpcStack(Stack):
                     cidr_mask = 24
                 )
             ],
-            nat_gateways = 1,
+            nat_gateways = 2,
             gateway_endpoints={
                 "s3" : ec2.GatewayVpcEndpointOptions(
                     service = ec2.GatewayVpcEndpointAwsService.S3
