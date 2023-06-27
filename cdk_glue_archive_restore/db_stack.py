@@ -34,6 +34,14 @@ class DbStack(Stack):
             peer = ec2.Peer.ipv4(vpc_stack.cidr),
             connection = ec2.Port.all_tcp(),
         )
+        #
+        # self reference inbound rule to satisfy glue's need for all IP, all ports
+        #
+        self.db_security_group.add_ingress_rule(
+            peer = self.db_security_group,
+            connection = ec2.Port.all_tcp(),
+            description = "self reference",
+        )
         Aspects.of(self).add(cdk_nag.AwsSolutionsChecks())
         self.db_name = 'postgres'
         #

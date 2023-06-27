@@ -59,23 +59,6 @@ class GlueStack(Stack):
         )
         Aspects.of(self).add(cdk_nag.AwsSolutionsChecks())
         #
-        # Create a security group to allow Glue to reach all resources on the subnet
-        #
-        glue_security_group = ec2.SecurityGroup(self, "GlueSecurityGroup",
-            vpc = vpc_stack.glueVPC,
-            allow_all_outbound = True,
-            description = "Allow Glue ETL jobs access to subnet resources",
-        )
-        glue_security_group.add_ingress_rule(
-            peer = ec2.Peer.any_ipv4(),
-            connection = ec2.Port.all_tcp(),
-        )
-
-        NagSuppressions.add_resource_suppressions(glue_security_group, [
-                {"id": 'AwsSolutions-EC23', "reason": 'Glue requires ingress for all IP and Ports or it exits with an error', },
-             ]
-        )
-        #
         # Create a Role that Glue will use to access Postgres, SecretManager and S3
         # These are managed policies, except the CRCEZ
         #
@@ -188,7 +171,7 @@ class GlueStack(Stack):
                     "KAFKA_SSL_ENABLED" : False,
                 },
                 physical_connection_requirements = glue.CfnConnection.PhysicalConnectionRequirementsProperty(
-                    security_group_id_list = [db_stack.db_security_group.security_group_id, glue_security_group.security_group_id],
+                    security_group_id_list = [db_stack.db_security_group.security_group_id],
                     subnet_id = vpc_stack.private_subnets.subnets[0].subnet_id,
                     availability_zone = vpc_stack.private_subnets.subnets[0].availability_zone,
                 )
@@ -208,7 +191,7 @@ class GlueStack(Stack):
                     "KAFKA_SSL_ENABLED" : False,
                 },
                 physical_connection_requirements = glue.CfnConnection.PhysicalConnectionRequirementsProperty(
-                    security_group_id_list = [db_stack.db_security_group.security_group_id, glue_security_group.security_group_id],
+                    security_group_id_list = [db_stack.db_security_group.security_group_id],
                     subnet_id = vpc_stack.private_subnets.subnets[1].subnet_id,
                     availability_zone = vpc_stack.private_subnets.subnets[1].availability_zone,
                 )
