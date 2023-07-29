@@ -214,7 +214,7 @@ class GlueStack(Stack):
             max_capacity = 1,
             max_retries = 0,
             name = "Archive Cold Tables",
-            default_arguments={"--additional-python-modules" : "psycopg2-binary", 
+            default_arguments={"library-set":"analytics", 
                                "--db_secret_arn":db_secret.secret_arn},
         )
         restore_job = glue.CfnJob(self, "Restore From S3",
@@ -231,7 +231,7 @@ class GlueStack(Stack):
             max_retries = 0,
             name = "Restore From S3",            
             max_capacity=1,
-            default_arguments={"--additional-python-modules" : "psycopg2-binary", 
+            default_arguments={"library-set":"analytics", 
                                "--db_secret_arn":db_secret.secret_arn}
         )
         partman_job = glue.CfnJob(self, "Partman run-maintenance",
@@ -249,7 +249,7 @@ class GlueStack(Stack):
             name = "Partman run maintenance",
             max_capacity = 1,
             timeout = 10,
-            default_arguments={"--additional-python-modules" : "psycopg2-binary", 
+            default_arguments={"library-set":"analytics", 
                                "--db_secret_arn":db_secret.secret_arn},
         )
         #
