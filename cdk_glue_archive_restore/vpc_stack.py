@@ -56,16 +56,22 @@ class VpcStack(Stack):
                 )
             },            
         )      
-        # add interface endpoint for secrets manager
+        # 
+        # Add interface endpoint for secrets manager so that the glue job can extract the DB credentials
+        #
         self.glueVPC.add_interface_endpoint('SecretsManagerEndpoint',
                                           service = ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER)
         self.private_subnets = self.glueVPC.select_subnets(subnet_type = ec2.SubnetType.PRIVATE_WITH_EGRESS)
 
         self.glueVPC.add_flow_log('FlowLogCloudWatch', traffic_type = ec2.FlowLogTrafficType.REJECT)
 
-
-
-
-
+        #
+        # Supress the CDK Nag warning - that CDK does not know the secrets manager endpoint's default security group setting because its set by an intrinsic function
+        #
+        NagSuppressions.add_resource_suppressions_by_path(self,
+                '/vpcstack/NewGlueVPC/SecretsManagerEndpoint/SecurityGroup/Resource',[
+                {"id": 'CdkNagValidationFailure', "reason": 'Security Manager security group needs no explicit port range set', },
+           ]
+        )
 
 
