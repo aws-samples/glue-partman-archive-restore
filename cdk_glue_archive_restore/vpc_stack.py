@@ -43,13 +43,18 @@ class VpcStack(Stack):
         self.glueVPC = ec2.Vpc(self, 'NewGlueVPC',
             ip_addresses = ec2.IpAddresses.cidr(self.cidr),
             subnet_configuration = [
-                ec2.SubnetConfiguration(
+                ec2.SubnetConfiguration(            # Needed for Cloud9 and to download test data
+                    name = 'PublicGlue1a',
+                    subnet_type = ec2.SubnetType.PUBLIC,
+                    cidr_mask = 24
+                ),
+                ec2.SubnetConfiguration(            # Database and Glue jobs run here
                     name = 'PrivateGlue1a',
                     subnet_type = ec2.SubnetType.PRIVATE_WITH_EGRESS,
                     cidr_mask = 24
                 )
             ],
-            nat_gateways = 0,
+            nat_gateways = 1,                       # Needed for Cloud9 and to download test data
             gateway_endpoints={
                 "s3" : ec2.GatewayVpcEndpointOptions(
                     service = ec2.GatewayVpcEndpointAwsService.S3
