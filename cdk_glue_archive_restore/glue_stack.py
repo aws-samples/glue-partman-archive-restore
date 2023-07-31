@@ -202,8 +202,8 @@ class GlueStack(Stack):
         #
         archive_job = glue.CfnJob(self, "Archive Cold Tables",
             command = glue.CfnJob.JobCommandProperty(
-                name = "glueetl",
-                python_version = "3",
+                name = "pythonshell",
+                python_version = "3.9",
                 script_location = "s3://"+vpc_stack.bucket_name+"/scripts/runarchive.py",
             ),
             role = glue_role.role_name,
@@ -211,24 +211,16 @@ class GlueStack(Stack):
                 connections = [connection_name, connection_name_b],
             ),
             description = "Archive cold partition table to S3",
-            execution_property = glue.CfnJob.ExecutionPropertyProperty(
-                max_concurrent_runs=1
-            ),
-            glue_version = "4.0",
+            max_capacity = 1,
             max_retries = 0,
             name = "Archive Cold Tables",
-            notification_property = glue.CfnJob.NotificationPropertyProperty(
-                notify_delay_after=123
-            ),
-            worker_type = "G.1X",
-            number_of_workers = 10,
-            timeout = 10,
-            default_arguments={"--additional-python-modules" : "psycopg2-binary", "--job-bookmark-option": "job-bookmark-disable"},
+            default_arguments={"library-set":"analytics", 
+                               "--db_secret_arn":db_secret.secret_arn},
         )
         restore_job = glue.CfnJob(self, "Restore From S3",
             command = glue.CfnJob.JobCommandProperty(
-                name = "glueetl",
-                python_version = "3",
+                name = "pythonshell",
+                python_version = "3.9",
                 script_location = "s3://"+vpc_stack.bucket_name+"/scripts/runrestore.py",
             ),
             role = glue_role.role_name,
@@ -236,24 +228,16 @@ class GlueStack(Stack):
                 connections = [connection_name, connection_name_b],
             ),
             description = "Restore partition table from S3",
-            execution_property = glue.CfnJob.ExecutionPropertyProperty(
-                max_concurrent_runs=1
-            ),
-            glue_version = "4.0",
             max_retries = 0,
-            name = "Restore From S3",
-            notification_property = glue.CfnJob.NotificationPropertyProperty(
-                notify_delay_after=123
-            ),
-            worker_type = "G.1X",
-            number_of_workers = 10,
-            timeout = 10,
-            default_arguments={"--additional-python-modules" : "psycopg2-binary", "--job-bookmark-option": "job-bookmark-disable"}
+            name = "Restore From S3",            
+            max_capacity=1,
+            default_arguments={"library-set":"analytics", 
+                               "--db_secret_arn":db_secret.secret_arn}
         )
         partman_job = glue.CfnJob(self, "Partman run-maintenance",
             command = glue.CfnJob.JobCommandProperty(
-                name = "glueetl",
-                   python_version = "3",
+                name = "pythonshell",
+                   python_version = "3.9",
                    script_location = "s3://"+vpc_stack.bucket_name+"/scripts/runpartman.py",
             ),
             role = glue_role.role_name,
@@ -261,19 +245,12 @@ class GlueStack(Stack):
                 connections = [connection_name, connection_name_b],
             ),
             description = "Partman run.maintenance",
-            execution_property = glue.CfnJob.ExecutionPropertyProperty(
-                max_concurrent_runs=1
-            ),
-            glue_version = "4.0",
             max_retries = 0,
             name = "Partman run maintenance",
-            notification_property = glue.CfnJob.NotificationPropertyProperty(
-                notify_delay_after=123
-            ),
-            worker_type = "G.1X",
-            number_of_workers = 10,
+            max_capacity = 1,
             timeout = 10,
-            default_arguments={"--additional-python-modules" : "psycopg2-binary", "--job-bookmark-option": "job-bookmark-disable"},
+            default_arguments={"library-set":"analytics", 
+                               "--db_secret_arn":db_secret.secret_arn},
         )
         #
         # Create the Archive Glue Workflow, its triggers, and link them together

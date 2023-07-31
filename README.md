@@ -21,8 +21,7 @@ using the AWS-S3 extension, and then drops the cold partition tables.
 
 The PostgreSQL RDS database runs in a private subnet. It stores its credentials in Secrets Managers and uses an S3 Endpoint to archive and restore files to S3 over the AWS Backbone.
 
-The AWS Glue ETL Jobs run in a private subnet. They use the S3 Endpoint to retrive python scripts, and Nat Gateway to download python modules. The Glue Jobs read the database credentials from 
-Secrets Manager. They establish a JDBC connection to PostgreSQL to execute SQL statements.
+The AWS Glue ETL Jobs run in a private subnet. They use the S3 Endpoint to retrive python scripts, and an interface endpoint to access AWS Secrets Manager. The Glue Jobs read the database credentials from Secrets Manager. They establish a JDBC connection to PostgreSQL to execute SQL statements.
 
 Cloud9 desktop is created in the private subnet allowing the user access to set up test data in PostgreSQL 
 
@@ -34,7 +33,7 @@ The CDK is organized as 3 stacks, to allow the resources in each stack to comple
 parameters by creating attributes that the next stack can read (see app.py module).
 
 The stacks create the following - 
-- VPC network enviroment necessary for running an AWS Glue ETL in a private subnet. This includes S3 Endpoint to reach the S3 bucket and a NAT Gateway to download modules from the Internet. 
+- VPC network enviroment necessary for running an AWS Glue ETL in a private subnet. This includes S3 Endpoint to reach the S3 bucket and an interface endpoint to connect with Secrets Manager. 
 - PostgreSQL database with permissions to import and export from S3 using the AWS_S3 extension
 - AWS Glue ETL jobs, Connection and Workflow, Security Group, parameters and the IAM permissions needed to create and run the jobs.
 
@@ -77,8 +76,7 @@ vpcstack - creates
 - S3 bucket - to store the glue python scripts and the database archives
 - VPC with a S3 endpoint Gateway to allow Glue and Postgres to commuicate with S3 
 - Private subnets for the RDS Postgres Database, Glue Jobs and Cloud9
-- Public subnets for the NAT Gateway to allow glue jobs to download python modules from the Internet
-- NAT gateway - to allow the Python in the Glue jobs to download modules from the Internet
+- VPC with an interface endpoint to allow Glue access to Secrets Manager
 			
 dbstack 
 - RDS Postgres database
