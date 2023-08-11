@@ -40,12 +40,12 @@ The stacks create the following -
 The user is free to use these samples to extend their own solution and database, using the samples to configure their VPC and create Glue Jobs and Workflow. 
  
 
-## Deploy the application
+## 1. Deploy the application
 
-### Prerequisite
+### 1.1 Prerequisite
 - AWS Account
 
-### In a windows command prompt or linux shell, run the following commands
+- In a windows command prompt or linux shell, run the following commands
 ```
 npm install -g aws-cdk
 
@@ -53,19 +53,19 @@ cdk bootstrap aws://<account number>/<region>
 ```		
 (Obtain your account number and choose a region from the AWS Console)
 
-### Clone this repo to a new folder
+### 1.2 Clone this repo to a new folder
 ```
 git clone https://github.com/aws-samples/glue-partman-archive-restore.git
 
 cd glue-partman-archive-restore
 ```
-### Create a virtual environment and install the project dependencies (adjust path for mac and linux)
+### 1.3 Create a virtual environment and install the project dependencies (adjust path for mac and linux)
 ```
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt -t.
 ```
-### Deploy the CDK stacks to your AWS account
+### 1.4 Deploy the CDK stacks to your AWS account
 
 - Authenticate to your AWS account
 ```
@@ -95,9 +95,9 @@ cdk deploy dbstack --require-approval=never
 cdk deploy gluestack --require-approval=never	
 ```			
 
-## Populate and configure the test data
+## 2. Populate and configure the test data
 
-###	Obtain a Cloud9 Terminal 
+### 2.1 Obtain a Cloud9 Terminal 
 	
 - Login to your AWS Account and access the AWS Console
 		
@@ -114,7 +114,7 @@ cdk deploy gluestack --require-approval=never
 		
 - Once the Cloud9 environment comes up, click on the Cloud9 IDE Open link
 	
-###	Install PostgreSQL client to the Cloud9 environment
+### 2.2 Install PostgreSQL client to the Cloud9 environment
 	
 - In the Cloud9 the top menu, select Window -> New Terminal
 		
@@ -125,7 +125,7 @@ sudo amazon-linux-extras install -y postgresql11
 ```
 Full details for configuring psql  https://catalog.us-east-1.prod.workshops.aws/workshops/2a5fc82d-2b5f-4105-83c2-91a1b4d7abfe/en-US/2-foundation/lab1-5-client/task4 
 
-###	Log into the Postgres database 
+### 2.3 Log into the Postgres database 
 	
 - From the AWS console, search for and select Secrets Manager
 		
@@ -140,7 +140,7 @@ psql -h <host> -U postgres
 <password>
 ```
 
-###	Setup Partman and the AWS_S3 extensions
+### 2.4 Setup Partman and the AWS_S3 extensions
 	
 In the Cloud9 Terminal, at the postgres=> prompt, enter the following commands:
 ```
@@ -166,7 +166,7 @@ CREATE TABLE dms_sample.ticket_purchase_hist (
 );
 ```
 
-### Clone the test data and upload it into the database
+### 2.5 Clone the test data and upload it into the database
 
 The test data is maintained in a separate repository, here
 
@@ -194,7 +194,7 @@ psql -h <host> -U postgres
 
 Wait for the script to complete and come back to the postgres=> prompt (may take 45 minutes)
 	
-### Set up Partman and create the partition tables
+### 2.6 Set up Partman and create the partition tables
 	
 - At the postgres=> prompt, enter the following commands
 ```
@@ -228,7 +228,7 @@ ALTER TABLE dms_sample.ticket_purchase_hist ADD CONSTRAINT ticket_purchase_hist_
 UPDATE partman.part_config SET infinite_time_partitions = true, retention = '12 months', retention_keep_table=true WHERE parent_table = 'dms_sample.ticket_purchase_hist';
 ```
 	
-## Prepare some data for a partition that will go cold
+### 2.7 Prepare some data for a partition that will go cold
 To demonstrate the archive and restore process, create a partition table before the retention period. Then update some data so that it populates this partition table.
 
 Create an old partition for a date month more than 12 months in the past - e.g., 2020-01
@@ -246,7 +246,7 @@ UPDATE dms_sample.ticket_purchase_hist SET transaction_date_time = '2020-01-03 0
 SELECT count(*) from dms_sample.ticket_purchase_hist_p2020_01;
 ```
 
-## Run the Maintain and Archive Glue Workflow to automatically maintain the partitions and archive the cold data to S3
+## 3. Run the Maintain and Archive Glue Workflow to automatically maintain the partitions and archive the cold data to S3
 The Maintain and Archive Glue Workflow runs two jobs:
  - runpartman - this job logs into the PostgreSQL database using the Glue connection. It runs the partman utility which automatically 
  creates new partition tables, and marks partition tables that exceed the retention period (12 months) as 'Cold'
@@ -255,7 +255,7 @@ that are not partitions. For each Cold table found, the job runs the aws_s3 exte
 and month. Finally, the job drops the Cold table.
 
 
-###	Log into the AWS Console and search for and select AWS Glue
+### 3.1 Log into the AWS Console and search for and select AWS Glue
 
 - Select Workflows (orchestration) and click on the "Maintain and Archive" workflow
 	
@@ -270,7 +270,7 @@ region - is used by the aws-s3 extension to copy the archive from postgres
 	
 - Once the workflow starts, click History, and select the running instance, then click View Run Details to see the progress.
 ![archive](./images/archive.png)	
-###  When the workflow completes, review the individual job runs
+### 3.2 When the workflow completes, review the individual job runs
 		
 - In the Glue menu, select ETL Jobs, select "Partman run maintenance" 
 			
@@ -280,7 +280,7 @@ region - is used by the aws-s3 extension to copy the archive from postgres
 			
 - Similarly review the CloudWatch log for the "Archive Cold Tables" job.
 	
-### Review the archive data in the S3 bucket
+### 3.3 Review the archive data in the S3 bucket
 	
 - From the AWS Console, search for and select the S3
 	
@@ -290,7 +290,7 @@ region - is used by the aws-s3 extension to copy the archive from postgres
 
 - From the bucket root, select the scripts folder - these are the python scripts run by the Glue jobs
 		
-### Review the database tables using Cloud9
+### 3.4 Review the database tables using Cloud9
 	
 - In the Cloud9 Terminal, at the postgres=> prompt, type the following command to list the tables on the database
 ```
@@ -299,12 +299,12 @@ region - is used by the aws-s3 extension to copy the archive from postgres
 - Note the cold partition table was dropped.
 		
 
-## Run the Restore Glue Workflow to restore the partition table from S3 
+## 4. Run the Restore Glue Workflow to restore the partition table from S3 
 The Restore Workflow takes a parameter - 'restore_date' - the month for the parition table to restore. It runs a single job:
  - restore - this job logs into the PostgreSQL database using the Glue Connection. It uses the partman extension to re-create the partition table for the month indicated. The job then runs aws_s3 extension 
 to restore the data from S3 to the table, which flows into the created partition table.
 
-###	In the AWS Console, search for Glue and select AWS Glue
+### 4.1 In the AWS Console, search for Glue and select AWS Glue
 
 - In the Glue console, select Workflows (orchestration), and select the "Restore From S3"
 	
@@ -320,11 +320,11 @@ region - is used by the aws-s3 extension to copy the archive to postgres
 
 - Click Update workflow 
 			
-### Click Run workflow, and observe the history as it runs
+### 4.2 Click Run workflow, and observe the history as it runs
 ![restore](./images/restore.png)
 - When the workflow completes, review the "Restore From S3" job run and its Cloudwatch Log
 
-### Review that the database table was restored and data populated from the S3 archive
+### 4.3 Review that the database table was restored and data populated from the S3 archive
 		
 - In Cloud9, at the postgres=> prompt, type the following command and verify the partition table was restored
 ```	
@@ -335,9 +335,9 @@ region - is used by the aws-s3 extension to copy the archive to postgres
 select count(*) from dms_sample.ticket_purchase_hist_p2020_01;
 ```
 
-## Cleanup
+## 5. Cleanup
 
-###	Delete Cloud9 instance
+### 5.1 Delete Cloud9 instance
 
 - Log into the AWS Console, search for and select Cloud9
 
@@ -345,7 +345,7 @@ select count(*) from dms_sample.ticket_purchase_hist_p2020_01;
 
 Wait for the delete to complete before the next step, so that the VPC and subnet can be deleted.
 		
-###	Destroy the stacks
+### 5.2 Destroy the stacks
 		
 - From the command prompt, refresh the authentication to AWS
 ```
@@ -361,6 +361,6 @@ cdk deploy dbstack --require-approval=never
 cdk deploy vpcstack --require-approval=never
 ```
 
-## Credit
+## 6. Credit
 This project is inspired by a blog post https://aws.amazon.com/blogs/database/archive-and-purge-data-for-amazon-rds-for-postgresql-and-amazon-aurora-with-postgresql-compatibility-using-pg_partman-and-amazon-s3/, 
 demonstrating an automated solution using AWS Glue
